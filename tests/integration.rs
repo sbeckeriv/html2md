@@ -74,8 +74,8 @@ fn test_tables_with_newlines() {
 
     // all lines starting with | should end with | as well
     let invalid_table_lines: Vec<&str> = result.lines()
-        .filter(|line| line.starts_with("|"))
-        .filter(|line| !line.ends_with("|"))
+        .filter(|line| line.starts_with('|'))
+        .filter(|line| !line.ends_with('|'))
         .collect();
         
     assert_that(&invalid_table_lines).is_empty();

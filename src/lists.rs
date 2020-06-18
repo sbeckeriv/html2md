@@ -1,16 +1,14 @@
-use super::TagHandler;
 use super::StructuredPrinter;
+use super::{Config, TagHandler};
 
 use markup5ever_rcdom::Handle;
 
 #[derive(Default)]
-pub(super) struct ListHandler {
-}
+pub(super) struct ListHandler {}
 
 impl TagHandler for ListHandler {
-
     /// we're entering "ul" or "ol" tag, no "li" handling here
-    fn handle(&mut self, _tag: &Handle, printer: &mut StructuredPrinter) {
+    fn handle(&mut self, _tag: &Handle, printer: &mut StructuredPrinter, config: &Config) {
         printer.insert_newline();
     }
 
@@ -24,14 +22,18 @@ impl TagHandler for ListHandler {
 #[derive(Default)]
 pub struct ListItemHandler {
     start_pos: usize,
-    list_type: String
+    list_type: String,
 }
 
 impl TagHandler for ListItemHandler {
-
-    fn handle(&mut self, _tag: &Handle, printer: &mut StructuredPrinter) {
+    fn handle(&mut self, _tag: &Handle, printer: &mut StructuredPrinter, config: &Config) {
         {
-            let parent_lists: Vec<&String> = printer.parent_chain.iter().rev().filter(|&tag| tag == "ul" || tag == "ol" || tag == "menu").collect();
+            let parent_lists: Vec<&String> = printer
+                .parent_chain
+                .iter()
+                .rev()
+                .filter(|&tag| tag == "ul" || tag == "ol" || tag == "menu")
+                .collect();
             let nearest_parent_list = parent_lists.first();
             if nearest_parent_list.is_none() {
                 // no parent list
@@ -44,7 +46,7 @@ impl TagHandler for ListItemHandler {
 
         if printer.data.chars().last() != Some('\n') {
             // insert newline when declaring a list item only in case there isn't any newline at the end of text
-            printer.insert_newline(); 
+            printer.insert_newline();
         }
 
         let current_depth = printer.parent_chain.len();
@@ -52,7 +54,7 @@ impl TagHandler for ListItemHandler {
         match self.list_type.as_ref() {
             "ul" | "menu" => printer.append_str("* "), // unordered list: *, *, *
             "ol" => printer.append_str(&(order.to_string() + ". ")), // ordered list: 1, 2, 3
-            _ => {} // never happens
+            _ => {}                                    // never happens
         }
 
         self.start_pos = printer.data.len();
@@ -62,14 +64,16 @@ impl TagHandler for ListItemHandler {
         let padding = match self.list_type.as_ref() {
             "ul" => 2,
             "ol" => 3,
-            _ => 4
+            _ => 4,
         };
 
-        // need to cleanup leading newlines, <p> inside <li> should produce valid 
+        // need to cleanup leading newlines, <p> inside <li> should produce valid
         // list element, not an empty line
         let index = self.start_pos;
         while index < printer.data.len() {
-            if printer.data.bytes().nth(index) == Some(b'\n') || printer.data.bytes().nth(index) == Some(b' ') {
+            if printer.data.bytes().nth(index) == Some(b'\n')
+                || printer.data.bytes().nth(index) == Some(b' ')
+            {
                 printer.data.remove(index);
             } else {
                 break;

@@ -1,15 +1,14 @@
-use super::TagHandler;
+use super::Config;
 use super::StructuredPrinter;
+use super::TagHandler;
 
 use markup5ever_rcdom::Handle;
 
 #[derive(Default)]
-pub(super) struct ContainerHandler {
-}
+pub(super) struct ContainerHandler {}
 
 impl TagHandler for ContainerHandler {
-
-    fn handle(&mut self, _tag: &Handle, printer: &mut StructuredPrinter) {
+    fn handle(&mut self, _tag: &Handle, printer: &mut StructuredPrinter, config: &Config) {
         printer.insert_newline();
         printer.insert_newline();
     }

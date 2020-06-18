@@ -1,7 +1,8 @@
-use super::TagHandler;
 use super::StructuredPrinter;
+use super::TagHandler;
 
-use markup5ever_rcdom::{Handle,NodeData};
+use super::Config;
+use markup5ever_rcdom::{Handle, NodeData};
 
 #[derive(Default)]
 pub(super) struct HeaderHandler {
@@ -9,11 +10,10 @@ pub(super) struct HeaderHandler {
 }
 
 impl TagHandler for HeaderHandler {
-
-    fn handle(&mut self, tag: &Handle, printer: &mut StructuredPrinter) {
+    fn handle(&mut self, tag: &Handle, printer: &mut StructuredPrinter, config: &Config) {
         self.header_type = match tag.data {
             NodeData::Element { ref name, .. } => name.local.to_string(),
-            _ => String::new()
+            _ => String::new(),
         };
 
         printer.insert_newline();
