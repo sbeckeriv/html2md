@@ -85,18 +85,24 @@ impl Config {
 
                 let fs: String = first.into_iter().collect();
                 let ls: String = last.into_iter().collect();
-                if ls.is_empty() {
+                if ls.trim().is_empty() {
                     array.push(fs.to_owned());
                     break;
                 }
-                if fs.is_empty() {
+                if fs.trim().is_empty() {
                     break;
                 }
 
                 if let Some(break_index) = fs.rfind(char::is_whitespace) {
                     let (new_first, back_to_second) = fs.split_at(break_index);
-                    array.push(new_first.to_owned());
-                    copy = format!("{}{}", back_to_second, ls);
+                    if new_first.trim().is_empty() {
+                        // split leaves it empty
+                        array.push(fs.to_owned());
+                        copy = format!("{}", ls);
+                    } else {
+                        array.push(new_first.to_owned());
+                        copy = format!("{}{}", back_to_second, ls);
+                    }
                 } else {
                     // no whitespace best we can do is break it here
                     //
