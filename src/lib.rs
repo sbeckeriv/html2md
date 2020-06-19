@@ -59,8 +59,60 @@ lazy_static! {
 }
 #[derive(Default, Clone)]
 pub struct Config {
-    max_length: i32,
-    new_line_break: String,
+    pub max_length: usize,
+    pub new_line_break: String,
+}
+impl Config {
+    fn new() -> Config {
+        Config {
+            max_length: 80,
+            new_line_break: "\n".to_string(),
+        }
+    }
+    // used for the common cases
+    pub fn break_string(&self, string: &str) -> Vec<String> {
+        self.break_size_string(string, self.max_length)
+    }
+
+    // used for tables directly where the columns sizes are set
+    pub fn break_size_string(&self, string: &str, size: usize) -> Vec<String> {
+        let mut array: Vec<String> = vec![];
+        let mut copy = string.to_string().clone();
+        loop {
+            let mut first: Vec<_> = copy.clone().chars().collect();
+            if first.len() > size {
+                let last = first.split_off(size);
+
+                let fs: String = first.into_iter().collect();
+                let ls: String = last.into_iter().collect();
+                if ls.is_empty() {
+                    array.push(fs.to_owned());
+                    break;
+                }
+                if fs.is_empty() {
+                    break;
+                }
+
+                if let Some(break_index) = fs.rfind(char::is_whitespace) {
+                    let (new_first, back_to_second) = fs.split_at(break_index);
+                    array.push(new_first.to_owned());
+                    copy = format!("{}{}", back_to_second, ls);
+                } else {
+                    // no whitespace best we can do is break it here
+                    //
+                    array.push(fs.to_owned());
+                    copy = format!("{}", ls);
+                }
+            } else if first.len() > 0 {
+                let fs: String = first.into_iter().collect();
+                array.push(fs.to_owned());
+                break;
+            } else {
+                break;
+            }
+        }
+        array
+    }
 }
 
 /// Custom variant of main function. Allows to pass custom tag<->tag factory pairs
@@ -90,7 +142,7 @@ pub fn parse_html_custom(
 /// # Arguments
 /// `html` is source HTML as `String`
 pub fn parse_html(html: &str) -> String {
-    parse_html_custom(html, &HashMap::default(), Config::default())
+    parse_html_custom(html, &HashMap::default(), Config::new())
 }
 
 /// Same as `parse_html` but retains all "span" html elements intact
@@ -127,7 +179,9 @@ fn walk(
     match input.data {
         NodeData::Document | NodeData::Doctype { .. } | NodeData::ProcessingInstruction { .. } => {}
         NodeData::Text { ref contents } => {
-            let mut text = contents.borrow().to_string();
+            let mut text = config
+                .break_string(&contents.borrow().to_string())
+                .join(&config.new_line_break);
             let inside_pre = result.parent_chain.iter().any(|tag| tag == "pre");
             if inside_pre {
                 // this is preformatted text, insert as-is

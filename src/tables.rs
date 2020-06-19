@@ -23,7 +23,6 @@ impl TagHandler for TableHandler {
 
         // detect cell width, counts
         let column_count: usize;
-        let mut column_widths: Vec<usize>;
         let mut rows = find_children(tag, "tr");
         {
             // detect row count
@@ -38,22 +37,9 @@ impl TagHandler for TableHandler {
             }
             // have rows with content, set column count
             column_count = collect_children(&most_big_row.unwrap(), any_matcher).len();
-            column_widths = vec![3; column_count];
-
-            // detect max column width
-            for row in &rows {
-                let cells = collect_children(row, any_matcher);
-                for index in 0..column_count {
-                    // from regular rows
-                    if let Some(cell) = cells.get(index) {
-                        let text = to_text(cell, config);
-                        column_widths[index] =
-                            cmp::min(column_widths[index], cmp::min(text.chars().count(), 20));
-                    }
-                }
-            }
         }
-
+        // max - 2 for the first line and space then 2 for the end of each column
+        let column_width: usize = (config.max_length - column_count * 2 - 2) / column_count;
         {
             // add header row
             let header_tr = rows
@@ -65,63 +51,38 @@ impl TagHandler for TableHandler {
                 Vec::new()
             };
 
-            table_markup.push('|');
+            let mut max_column_height = 0;
+
             for index in 0..column_count {
-                let padded_header_text =
-                    pad_cell_text(&header_cells.get(index), column_widths[index], config);
-                table_markup.push_str(&padded_header_text);
-                table_markup.push('|');
+                let height = column_height(&header_cells.get(index), column_width, config);
+                if height > max_column_height {
+                    max_column_height = height;
+                }
             }
-            table_markup.push('\n');
+            table_markup.push_str(&"-".repeat(config.max_length - 1));
+            for height_index in 0..max_column_height {
+                table_markup.push('|');
+
+                for index in 0..column_count {
+                    // very wasteful
+                    let default = "".to_string();
+                    let text = if let Some(cell) = header_cells.get(index) {
+                        let string_rows = to_text(cell, &config, column_width);
+                        string_rows.get(height_index).unwrap_or(&default).clone()
+                    } else {
+                        default
+                    };
+
+                    table_markup.push_str(&format!(" {} ", pad_text(text, column_width)));
+                    table_markup.push('|');
+                }
+                table_markup.push('\n');
+            }
 
             // add header-body divider row
             table_markup.push('|');
-            for index in 0..column_count {
-                let width = column_widths[index];
-                if width < 3 {
-                    // no point in aligning, just post as-is
-                    table_markup.push_str(&"-".repeat(width));
-                    table_markup.push('|');
-                    continue;
-                }
-
-                // try to detect alignment
-                let mut alignment = String::new();
-                if let Some(header_cell) = header_cells.get(index) {
-                    // we have a header, try to extract alignment from it
-                    alignment = match header_cell.data {
-                        NodeData::Element { ref attrs, .. } => {
-                            let attrs = attrs.borrow();
-                            let align_attr = attrs
-                                .iter()
-                                .find(|attr| attr.name.local.to_string() == "align");
-                            align_attr
-                                .map(|attr| attr.value.to_string())
-                                .unwrap_or_default()
-                        }
-                        _ => String::new(),
-                    };
-                }
-
-                // push lines according to alignment, fallback to default behaviour
-                match alignment.as_ref() {
-                    "left" => {
-                        table_markup.push(':');
-                        table_markup.push_str(&"-".repeat(width - 1));
-                    }
-                    "center" => {
-                        table_markup.push(':');
-                        table_markup.push_str(&"-".repeat(width - 2));
-                        table_markup.push(':');
-                    }
-                    "right" => {
-                        table_markup.push_str(&"-".repeat(width - 1));
-                        table_markup.push(':');
-                    }
-                    _ => table_markup.push_str(&"-".repeat(width)),
-                }
-                table_markup.push('|');
-            }
+            table_markup.push_str(&"-".repeat(config.max_length - 1));
+            table_markup.push('|');
             table_markup.push('\n');
         }
 
@@ -132,15 +93,38 @@ impl TagHandler for TableHandler {
             return children.iter().any(|child| tag_name(&child) == "td");
         });
         for row in &rows {
-            table_markup.push('|');
             let cells = collect_children(row, td_matcher);
+
+            let mut max_column_height = 0;
+
             for index in 0..column_count {
-                // we need to fill all cells in a column, even if some rows don't have enough
-                let padded_cell_text =
-                    pad_cell_text(&cells.get(index), column_widths[index], config);
-                table_markup.push_str(&padded_cell_text);
-                table_markup.push('|');
+                let height = column_height(&cells.get(index), column_width, config);
+                if height > max_column_height {
+                    max_column_height = height;
+                }
             }
+
+            for height_index in 0..max_column_height {
+                table_markup.push('|');
+                for index in 0..column_count {
+                    // very wasteful
+                    let default = "".to_string();
+                    let text = if let Some(cell) = cells.get(index) {
+                        let string_rows = to_text(cell, &config, column_width);
+                        string_rows.get(height_index).unwrap_or(&default).clone()
+                    } else {
+                        default
+                    };
+
+                    table_markup.push_str(&format!(" {} ", pad_text(text, column_width)));
+                    table_markup.push('|');
+                }
+                table_markup.push('\n');
+            }
+
+            table_markup.push('|');
+            table_markup.push_str(&"-".repeat(config.max_length - 1));
+            table_markup.push('|');
             table_markup.push('\n');
         }
 
@@ -156,40 +140,37 @@ impl TagHandler for TableHandler {
     }
 }
 
-/// Pads cell text from right and left so it looks centered inside the table cell
-/// ### Arguments
-/// `tag` - optional reference to currently processed handle, text is extracted from here
-///
-/// `column_width` - precomputed column width to compute padding length from
-fn pad_cell_text(tag: &Option<&Handle>, column_width: usize, config: &Config) -> String {
-    let mut result = String::new();
+fn column_height(tag: &Option<&Handle>, column_width: usize, config: &Config) -> usize {
     if let Some(cell) = tag {
         // have header at specified position
-        let text = to_text(cell, config);
-        // compute difference between width and text length
-        let len_diff = column_width - text.chars().count();
-        if len_diff > 0 {
-            // should pad
-            if len_diff > 1 {
-                // should pad from both sides
-                let pad_len = len_diff / 2;
-                let remainder = len_diff % 2;
-                result.push_str(&" ".repeat(pad_len));
-                result.push_str(&text);
-                result.push_str(&" ".repeat(pad_len + remainder));
-            } else {
-                // it's just one space, add at the end
-                result.push_str(&text);
-                result.push(' ');
-            }
-        } else {
-            // shouldn't pad, text fills whole cell
-            result.push_str(&text);
-        }
+        to_text(cell, config, column_width).len()
     } else {
         // no text in this cell, fill cell with spaces
-        let pad_len = column_width;
-        result.push_str(&" ".repeat(pad_len));
+        1
+    }
+}
+
+fn pad_text(text: String, column_width: usize) -> String {
+    let mut result = "".to_string();
+    // compute difference between width and text length
+    let len_diff = column_width - text.chars().count();
+    if len_diff > 0 {
+        // should pad
+        if len_diff > 1 {
+            // should pad from both sides
+            let pad_len = len_diff / 2;
+            let remainder = len_diff % 2;
+            result.push_str(&" ".repeat(pad_len));
+            result.push_str(&text);
+            result.push_str(&" ".repeat(pad_len + remainder));
+        } else {
+            // it's just one space, add at the end
+            result.push_str(&text);
+            result.push(' ');
+        }
+    } else {
+        // shouldn't pad, text fills whole cell
+        result.push_str(&text);
     }
 
     return result;
@@ -241,10 +222,9 @@ where
 
 /// Convert html tag to text. This collects all tag children in correct order where they're observed
 /// and concatenates their text, recursively.
-fn to_text(tag: &Handle, config: &Config) -> String {
+fn to_text(tag: &Handle, config: &Config, column_width: usize) -> Vec<String> {
     let mut printer = StructuredPrinter::default();
     walk(tag, &mut printer, &HashMap::default(), config);
-
-    let result = clean_markdown(&printer.data);
-    return result.replace("\n", "<br/>");
+    let clean = clean_markdown(&printer.data);
+    config.break_size_string(&clean, column_width)
 }

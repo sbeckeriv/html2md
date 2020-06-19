@@ -3,35 +3,48 @@ extern crate html2md;
 use html2md::parse_html;
 
 #[test]
-fn test_tables() {
-    let md = parse_html(r#"<table>
+fn test_table_wrapping() {
+    let md = parse_html(
+        r#"<table>
   <thead>
     <tr>
       <th scope='col'>Minor1</th>
-      <th scope='col'>Minor2</th>
+      <th scope='col'> Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2 Minor2</th>
       <th scope='col'>Minor3</th>
       <th scope='col'>Minor4</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>col1</td>
+      <td> col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14</td>
       <td>col2</td>
       <td>col3</td>
       <td>col4</td>
     </tr>
-  </tbody>
-</table>"#);
 
-    assert_eq!(md, "\
+    <tr>
+      <td>col2</td>
+      <td> col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14 col14</td>
+      <td>col3</td>
+      <td>col4</td>
+    </tr>
+  </tbody>
+</table>"#,
+    );
+
+    assert_eq!(
+        md,
+        "\
 |Minor1|Minor2|Minor3|Minor4|
 |------|------|------|------|
-| col1 | col2 | col3 | col4 |");
+| col1 | col2 | col3 | col4 |"
+    );
 }
 
 #[test]
 fn test_tables_invalid_more_headers() {
-    let md = parse_html(r#"<table>
+    let md = parse_html(
+        r#"<table>
   <thead>
     <tr>
       <th scope='col'>Minor1</th>
@@ -50,17 +63,22 @@ fn test_tables_invalid_more_headers() {
       <td>col4</td>
     </tr>
   </tbody>
-</table>"#);
+</table>"#,
+    );
 
-    assert_eq!(md, "\
+    assert_eq!(
+        md,
+        "\
 |Minor1|Minor2|Minor3|Minor4|Minor5|Minor6|
 |------|------|------|------|------|------|
-| col1 | col2 | col3 | col4 |      |      |");
+| col1 | col2 | col3 | col4 |      |      |"
+    );
 }
 
 #[test]
 fn test_tables_invalid_more_rows() {
-    let md = parse_html(r#"<table>
+    let md = parse_html(
+        r#"<table>
   <thead>
     <tr>
       <th scope='col'>Minor1</th>
@@ -75,17 +93,22 @@ fn test_tables_invalid_more_rows() {
       <td>col4</td>
     </tr>
   </tbody>
-</table>"#);
+</table>"#,
+    );
 
-    assert_eq!(md, "\
+    assert_eq!(
+        md,
+        "\
 |Minor1|Minor2|    |    |
 |------|------|----|----|
-| col1 | col2 |col3|col4|");
+| col1 | col2 |col3|col4|"
+    );
 }
 
 #[test]
 fn test_tables_odd_column_width() {
-    let md = parse_html(r#"<table>
+    let md = parse_html(
+        r#"<table>
   <thead>
     <tr>
       <th scope='col'>Minor</th>
@@ -98,17 +121,22 @@ fn test_tables_odd_column_width() {
       <td>col2</td>
     </tr>
   </tbody>
-</table>"#);
+</table>"#,
+    );
 
-    assert_eq!(md, "\
+    assert_eq!(
+        md,
+        "\
 |Minor|Major|
 |-----|-----|
-|col1 |col2 |");
+|col1 |col2 |"
+    );
 }
 
 #[test]
 fn test_tables_alignment() {
-    let md = parse_html(r#"<table>
+    let md = parse_html(
+        r#"<table>
   <thead>
     <tr>
       <th align='right'>Minor1</th>
@@ -125,17 +153,22 @@ fn test_tables_alignment() {
       <td>col4</td>
     </tr>
   </tbody>
-</table>"#);
+</table>"#,
+    );
 
-    assert_eq!(md, "\
+    assert_eq!(
+        md,
+        "\
 |Minor1|Minor2|Minor3|Minor4|
 |-----:|:----:|-----:|:-----|
-| col1 | col2 | col3 | col4 |");
+| col1 | col2 | col3 | col4 |"
+    );
 }
 
 #[test]
 fn test_tables_wild_example() {
-    let md = parse_html(r#"
+    let md = parse_html(
+        r#"
 <table style="width: 100%;">
     <thead>
     <tr>
@@ -181,7 +214,8 @@ fn test_tables_wild_example() {
         <td style="width: 16.6667%;"><br></td>
     </tr>
     </tbody>
-</table>"#);
+</table>"#,
+    );
 
     assert_eq!(md, "\
 |          One ring           |         Patterns         |              Titanic              |   |   |   |
