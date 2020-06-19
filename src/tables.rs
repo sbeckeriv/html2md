@@ -59,22 +59,30 @@ impl TagHandler for TableHandler {
 
             if header_cells.len() > 0 {
                 let mut max_column_height = 0;
-
+                let mut formated_columns = vec![];
                 for index in 0..column_count {
-                    let height = column_height(&header_cells.get(index), column_width, config);
-                    if height > max_column_height {
-                        max_column_height = height;
+                    let texts = if let Some(cell) = &header_cells.get(index) {
+                        to_text(cell, config, column_width)
+                    } else {
+                        // no text in this cell, fill cell with spaces
+                        vec![]
+                    };
+                    if texts.len() > max_column_height {
+                        max_column_height = texts.len();
                     }
+                    formated_columns.push(texts);
                 }
                 for height_index in 0..max_column_height {
                     table_markup.push('|');
 
                     for index in 0..column_count {
-                        // very wasteful
                         let default = "".to_string();
-                        let text = if let Some(cell) = header_cells.get(index) {
-                            let string_rows = to_text(cell, &config, column_width);
-                            string_rows.get(height_index).unwrap_or(&default).clone()
+                        let text = if let Some(col) = formated_columns.get(index) {
+                            if let Some(col_index) = col.get(height_index) {
+                                col_index.clone()
+                            } else {
+                                default
+                            }
                         } else {
                             default
                         };
@@ -102,23 +110,32 @@ impl TagHandler for TableHandler {
         for row in &rows {
             let cells = collect_children(row, td_matcher);
 
+            let mut formated_columns = vec![];
             let mut max_column_height = 0;
 
             for index in 0..column_count {
-                let height = column_height(&cells.get(index), column_width, config);
-                if height > max_column_height {
-                    max_column_height = height;
+                let texts = if let Some(cell) = &cells.get(index) {
+                    to_text(cell, config, column_width)
+                } else {
+                    // no text in this cell, fill cell with spaces
+                    vec![]
+                };
+                if texts.len() > max_column_height {
+                    max_column_height = texts.len();
                 }
+                formated_columns.push(texts);
             }
 
             for height_index in 0..max_column_height {
                 table_markup.push('|');
                 for index in 0..column_count {
-                    // very wasteful
                     let default = "".to_string();
-                    let text = if let Some(cell) = cells.get(index) {
-                        let string_rows = to_text(cell, &config, column_width);
-                        string_rows.get(height_index).unwrap_or(&default).clone()
+                    let text = if let Some(col) = formated_columns.get(index) {
+                        if let Some(col_index) = col.get(height_index) {
+                            col_index.clone()
+                        } else {
+                            default
+                        }
                     } else {
                         default
                     };

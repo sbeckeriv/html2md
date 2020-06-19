@@ -13,6 +13,14 @@ use html5ever::driver::ParseOpts;
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 
+#[macro_use]
+extern crate slog;
+extern crate slog_async;
+extern crate slog_term;
+
+use slog::Drain;
+use std::fs::OpenOptions;
+
 pub use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 mod anchors;
@@ -57,16 +65,18 @@ lazy_static! {
 
     static ref MARKDOWN_KEYCHARS: Regex = Regex::new(r"[!\\_\-~+>*]").unwrap();        // for Markdown escaping
 }
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Config {
     pub max_length: usize,
     pub new_line_break: String,
+    pub logger: Option<slog::Logger>,
 }
 impl Config {
     fn new() -> Config {
         Config {
             max_length: 80,
             new_line_break: "\n".to_string(),
+            logger: None,
         }
     }
     // used for the common cases
@@ -88,7 +98,9 @@ impl Config {
 
                 let fs: String = first.into_iter().collect();
                 let ls: String = last.into_iter().collect();
-
+                if let Some(log) = &self.logger {
+                    info!(log, "{}, {}\n {}\n {}\n {}", count, copy, fs, ls, size);
+                }
                 if count > 100 {
                     panic!(format!("{}, {}, {}, {}", copy, fs, ls, size));
                 }
@@ -171,7 +183,7 @@ pub fn parse_html_extended(html: &str) -> String {
 
     let mut tag_factory: HashMap<String, Box<dyn TagHandlerFactory>> = HashMap::new();
     tag_factory.insert(String::from("span"), Box::new(SpanAsIsTagFactory {}));
-    return parse_html_custom(html, &tag_factory, Config::default());
+    return parse_html_custom(html, &tag_factory, Config::new());
 }
 
 /// Recursively walk through all DOM tree and handle all elements according to
