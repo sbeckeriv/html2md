@@ -78,13 +78,20 @@ impl Config {
     pub fn break_size_string(&self, string: &str, size: usize) -> Vec<String> {
         let mut array: Vec<String> = vec![];
         let mut copy = string.to_string().clone();
+        let mut count = 0;
         loop {
+            count = count + 1;
+
             let mut first: Vec<_> = copy.clone().chars().collect();
             if first.len() > size {
                 let last = first.split_off(size);
 
                 let fs: String = first.into_iter().collect();
                 let ls: String = last.into_iter().collect();
+
+                if count > 100 {
+                    panic!(format!("{}, {}, {}, {}", copy, fs, ls, size));
+                }
                 if ls.trim().is_empty() {
                     array.push(fs.to_owned());
                     break;
