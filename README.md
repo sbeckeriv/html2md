@@ -1,6 +1,13 @@
 HTML2MD
 ============
 
+
+Hard fork to enforce a width limit. I am using it in a TUI to achive something like this
+
+https://gitlab.com/Kanedias/html2md/uploads/d649a0b39ec9333606b35ece204c68b6/image.png
+
+
+
 Library to convert simple html documents into markdown flavor.
 Implements markdown as written on its [inception page](https://daringfireball.net/projects/markdown).
 
