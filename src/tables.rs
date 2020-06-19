@@ -40,6 +40,12 @@ impl TagHandler for TableHandler {
         }
         // max - 2 for the first line and space then 2 for the end of each column
         let column_width: usize = (config.max_length - column_count * 2 - 2) / column_count;
+
+        table_markup.push('|');
+        table_markup.push_str(&"-".repeat(config.max_length - 1));
+
+        table_markup.push('|');
+        table_markup.push('\n');
         {
             // add header row
             let header_tr = rows
@@ -51,39 +57,40 @@ impl TagHandler for TableHandler {
                 Vec::new()
             };
 
-            let mut max_column_height = 0;
-
-            for index in 0..column_count {
-                let height = column_height(&header_cells.get(index), column_width, config);
-                if height > max_column_height {
-                    max_column_height = height;
-                }
-            }
-            table_markup.push_str(&"-".repeat(config.max_length - 1));
-            for height_index in 0..max_column_height {
-                table_markup.push('|');
+            if header_cells.len() > 0 {
+                let mut max_column_height = 0;
 
                 for index in 0..column_count {
-                    // very wasteful
-                    let default = "".to_string();
-                    let text = if let Some(cell) = header_cells.get(index) {
-                        let string_rows = to_text(cell, &config, column_width);
-                        string_rows.get(height_index).unwrap_or(&default).clone()
-                    } else {
-                        default
-                    };
-
-                    table_markup.push_str(&format!(" {} ", pad_text(text, column_width)));
-                    table_markup.push('|');
+                    let height = column_height(&header_cells.get(index), column_width, config);
+                    if height > max_column_height {
+                        max_column_height = height;
+                    }
                 }
+                for height_index in 0..max_column_height {
+                    table_markup.push('|');
+
+                    for index in 0..column_count {
+                        // very wasteful
+                        let default = "".to_string();
+                        let text = if let Some(cell) = header_cells.get(index) {
+                            let string_rows = to_text(cell, &config, column_width);
+                            string_rows.get(height_index).unwrap_or(&default).clone()
+                        } else {
+                            default
+                        };
+
+                        table_markup.push_str(&format!(" {} ", pad_text(text, column_width)));
+                        table_markup.push('|');
+                    }
+                    table_markup.push('\n');
+                }
+
+                // add header-body divider row
+                table_markup.push('|');
+                table_markup.push_str(&"-".repeat(config.max_length - 1));
+                table_markup.push('|');
                 table_markup.push('\n');
             }
-
-            // add header-body divider row
-            table_markup.push('|');
-            table_markup.push_str(&"-".repeat(config.max_length - 1));
-            table_markup.push('|');
-            table_markup.push('\n');
         }
 
         // remove headers, leave only non-header rows now
@@ -226,5 +233,6 @@ fn to_text(tag: &Handle, config: &Config, column_width: usize) -> Vec<String> {
     let mut printer = StructuredPrinter::default();
     walk(tag, &mut printer, &HashMap::default(), config);
     let clean = clean_markdown(&printer.data);
+    let clean = clean.replace("\n", "   ");
     config.break_size_string(&clean, column_width)
 }
